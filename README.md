@@ -9,11 +9,13 @@ A Julia implementation of [Binary Decision Diagrams](https://en.wikipedia.org/wi
 
 Some basic requirements:
 
-* User should be able to manually construct a BDD by specifying decision nodes
-* User should be able to `reduce` a BDD w.r.t. a specified variable ordering
+* User should be able to manually construct a ROBDD by performing boolean operations on sub-ROBDDs
+    - 
+* There should be a function to check whether a BDD respects a given variable ordering
+* There should be a function to `reduce` a BDD w.r.t. a specified variable ordering, yielding a ROBDD.
 
-Some desirable features:
+Desirable features:
 
 * A constructor that compiles a ROBDD from a Boolean expression
-* A DSL that 
-
+* A DSL for constructing ROBDDs from Boolean functions
+* A DSL 
