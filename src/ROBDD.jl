@@ -7,7 +7,7 @@
 module ROBDD
 
 
-export ROBDDTable, build_robdd, apply
+export ROBDDTable, build_robdd, apply, restrict
 
 
 # The simple building block of our ROBDDs.
@@ -222,6 +222,35 @@ function build_robdd(bddtab::ROBDDTable, bool_expr::Union{Bool,Symbol,Expr})
     end
     
     return rec_build(bool_expr)
+end
+
+
+function restrict(bddtab::ROBDDTable, bdd_idx::Int64, assignments::Dict{Symbol,Bool})
+    memo = Dict{Tuple{Int64,Int64,Bool},Int64}()
+    
+    function rec_res(u, j, b)
+        if haskey(memo, (u,j,b))
+            return memo[(u,j,b)]
+        elseif var(bddtab, u) > j
+            return u
+        elseif var(bddtab, u) < j
+            return get_or_add(bddtab, BDDNode(var(bddtab, u),
+                                              rec_res(lo(bddtab, u), j, b),
+                                              rec_res(hi(bddtab, u), j, b)
+                                             )
+                             )
+        elseif !b
+            return rec_res(lo(bddtab,u), j, b)
+        else
+            return rec_res(hi(bddtab,u), j, b)
+        end
+    end
+
+    for (j, b) in pairs(assignments)
+        bdd_idx = rec_res(bdd_idx, bddtab.order_lookup[j], b)
+    end
+
+    return bdd_idx
 end
 
 
