@@ -308,7 +308,6 @@ function clean_table(bddtab::ROBDDTable, idx::Int64)
     end
 
     new_idx = rec_clean(idx)
-
     return new_table, new_idx
 end
 
