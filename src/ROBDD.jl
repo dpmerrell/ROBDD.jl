@@ -7,7 +7,7 @@
 module ROBDD
 
 
-export ROBDDTable, build_robdd, apply, restrict
+export ROBDDTable, build_robdd, apply, restrict 
 
 
 # The simple building block of our ROBDDs.
@@ -186,8 +186,16 @@ function apply(bddtab::ROBDDTable, op::Function, idx1::Int64, idx2::Int64;
 end
 
 
-function build_robdd(bddtab::ROBDDTable, bool_expr::Union{Bool,Symbol,Expr})
-    memo = Dict{Tuple{Function,Vararg{Int64}},Int64}()
+"""
+Build an ROBDD from a boolean expression `bool_expr`,
+within the context defined by ROBDDTable `bddtab`.
+
+Optional `memo` kwarg allows a persistent memoization cache 
+to be used by multiple calls to `build_robdd`.
+"""
+function build_robdd(bddtab::ROBDDTable, bool_expr::Union{Bool,Symbol,Expr};
+                     memo::Dict{Tuple{Function,Vararg{Int64}},Int64}=Dict{Tuple{Function,Vararg{Int64}},Int64}()
+                    )
     
     function rec_build(my_expr)
         # Terminals
@@ -225,8 +233,16 @@ function build_robdd(bddtab::ROBDDTable, bool_expr::Union{Bool,Symbol,Expr})
 end
 
 
-function restrict(bddtab::ROBDDTable, bdd_idx::Int64, assignments::Dict{Symbol,Bool})
-    memo = Dict{Tuple{Int64,Int64,Bool},Int64}()
+"""
+Restrict a ROBDD via `assignments`,
+a dictionary of variable assignments.
+
+Optional `memo` kwarg allows a persistent memoization cache 
+to be used by multiple calls to `restrict`.
+"""
+function restrict(bddtab::ROBDDTable, bdd_idx::Int64, assignments::Dict{Symbol,Bool};
+                  memo::Dict{Tuple{Int64,Int64,Bool},Int64}=Dict{Tuple{Int64,Int64,Bool},Int64}()
+                  )
     
     function rec_res(u, j, b)
         if haskey(memo, (u,j,b))
@@ -234,16 +250,18 @@ function restrict(bddtab::ROBDDTable, bdd_idx::Int64, assignments::Dict{Symbol,B
         elseif var(bddtab, u) > j
             return u
         elseif var(bddtab, u) < j
-            return get_or_add(bddtab, BDDNode(var(bddtab, u),
-                                              rec_res(lo(bddtab, u), j, b),
-                                              rec_res(hi(bddtab, u), j, b)
-                                             )
-                             )
+            u_new = get_or_add(bddtab, BDDNode(var(bddtab, u),
+                                               rec_res(lo(bddtab, u), j, b),
+                                               rec_res(hi(bddtab, u), j, b)
+                                               )
+                               )
         elseif !b
-            return rec_res(lo(bddtab,u), j, b)
+            u_new = rec_res(lo(bddtab,u), j, b)
         else
-            return rec_res(hi(bddtab,u), j, b)
+            u_new = rec_res(hi(bddtab,u), j, b)
         end
+        memo[(u,j,b)] = u_new
+        return u_new
     end
 
     for (j, b) in pairs(assignments)
