@@ -7,7 +7,11 @@
 module ROBDD
 
 
-export ROBDDTable, build_robdd, apply, restrict 
+export ROBDDTable, build_robdd, apply, restrict, clean_table 
+
+# Some essential functionality for the ROBDDTable 
+# and its members.
+import Base: getindex, setindex!, show
 
 
 # The simple building block of our ROBDDs.
@@ -44,7 +48,7 @@ end
 LookupTable() = LookupTable(Dict{BDDNode,Int64}())
 
 
-struct ROBDDTable
+mutable struct ROBDDTable
     order::Vector{Symbol}
     order_lookup::Dict{Symbol,Int64}
     T::NodeTable
@@ -59,17 +63,19 @@ ROBDDTable(order::Vector{Symbol}) = ROBDDTable(order,
                                               )
 
 
-# Some essential functionality for the ROBDDTable 
-# and its members.
-import Base: getindex, setindex!, show
-
 
 function show(io::IO, bddtab::ROBDDTable)
     out_str = string("(0) false\n(1) true")
     for i=2:bddtab.T.latest
-        out_str = string(out_str, "\n","(",i,") ", bddtab[i])
+        v = varname(bddtab,i)
+        out_str = string(out_str, "\n","(",i,") ", 
+                         varname(bddtab,i), " ", 
+                         lo(bddtab,i), " ",
+                         hi(bddtab,i))
     end
-    return out_str
+    print(io, out_str)
+
+    return 
 end
 
 
@@ -108,6 +114,7 @@ end
 
 getindex(bddtab::ROBDDTable, idx::Int64) = bddtab.T[idx]
 var(bddtab::ROBDDTable, idx::Int64) = bddtab[idx].var
+varname(bddtab::ROBDDTable, idx::Int64) = bddtab.order[bddtab[idx].var]
 lo(bddtab::ROBDDTable, idx::Int64) = bddtab[idx].lo
 hi(bddtab::ROBDDTable, idx::Int64) = bddtab[idx].hi
 
@@ -269,6 +276,40 @@ function restrict(bddtab::ROBDDTable, bdd_idx::Int64, assignments::Dict{Symbol,B
     end
 
     return bdd_idx
+end
+
+
+"""
+Create a new ROBDDTable encoding the same ROBDD
+as `bddtab[idx]`, but with all of the "unused" nodes
+removed.
+
+Returns a tuple: (new_table::ROBDDTable, new_idx::Int64)
+"""
+function clean_table(bddtab::ROBDDTable, idx::Int64)
+    
+    new_table = ROBDDTable(bddtab.order)
+    old2new = Dict{Int64,Int64}(0=>0,1=>1)
+
+    function rec_clean(old_u)
+        if haskey(old2new, old_u)
+            return old2new[old_u]
+        else
+            new_lo = rec_clean(lo(bddtab, old_u))
+            new_hi = rec_clean(hi(bddtab, old_u))
+            new_u = get_or_add(new_table, 
+                               BDDNode(var(bddtab, old_u),
+                                       new_lo, new_hi
+                                      )
+                               )
+            old2new[old_u] = new_u
+            return new_u
+        end
+    end
+
+    new_idx = rec_clean(idx)
+
+    return new_table, new_idx
 end
 
 
