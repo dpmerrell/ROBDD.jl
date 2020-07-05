@@ -1,0 +1,4 @@
+name = "ROBDD"
+uuid = "ebc74b1a-095f-4b26-a973-469aa541d333"
+authors = ["David Merrell <dmerrell@cs.wisc.edu>"]
+version = "0.1.0"
