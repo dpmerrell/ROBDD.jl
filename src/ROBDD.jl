@@ -11,7 +11,7 @@ export ROBDDTable, build_robdd, apply, restrict, clean_table
 
 # Some essential functionality for the ROBDDTable 
 # and its members.
-import Base: getindex, setindex!, show
+import Base: getindex, setindex!, show, iterate
 
 
 # The simple building block of our ROBDDs.
@@ -276,6 +276,78 @@ function restrict(bddtab::ROBDDTable, bdd_idx::Int64, assignments::Dict{Symbol,B
     end
 
     return bdd_idx
+end
+
+
+"""
+Count the satisfying assignments of an ROBDD.
+"""
+function satcount(bddtab::ROBDDTable, idx::Int64;
+                  memo::Dict{Int64,Int64}=Dict{Int64,Int64}())
+
+    function rec_count(u)
+        if haskey(memo, u)
+            return memo[u]
+        elseif u == 0
+            count = 0
+        elseif u == 1
+            count = 1
+        else
+            l = lo(bddtab,u)
+            h = hi(bddtab,u)
+            lcount = rec_count(l)
+            hcount = rec_count(h)
+            res = lcount * 2^(var(bddtab,l) - var(bddtab,u) - 1) + hcount * 2^(var(bddtab,r) - var(bddtab,u) - 1)
+        end
+        return res
+    end
+
+    return rec_count(idx)
+end
+
+
+"""
+Return an arbitrary satisfying assignment for an ROBDD.
+The method is deterministic -- it will return the same value
+when called multiple times.
+"""
+function anysat(bddtab::ROBDDTable, idx::Int64)
+    if idx == 0
+        error("unsat")
+    elseif idx == 1
+        return Dict{Symbol,Bool}()
+    elseif lo(bddtab, idx) == 0
+        assignments = anysat(bddtab, hi(bddtab,idx))
+        assignments[bddtab.order_lookup[idx]] = true
+        return assignments
+    else
+        assignments = anysat(bddtab, lo(bddtab,idx))
+        assignments[bddtab.order_lookup[idx]] = false
+        return assignments
+    end
+end
+
+
+"""
+An iterator over the set of satisfying assignments.
+Performs DFS to find all paths from the root node 
+to the (1) node.
+
+Note that any unassigned variables may take arbitrary values.
+Hence, an assignment with n unassigned variables actually 
+represents 2^n assignments.
+"""
+struct allsat
+    bddtable::ROBDDTable
+    idx::Int64
+end
+
+
+function iterate(it::allsat)
+    try 
+        return ()
+    catch 
+        return nothing
 end
 
 
