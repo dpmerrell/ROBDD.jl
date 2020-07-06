@@ -328,27 +328,29 @@ function anysat(bddtab::ROBDDTable, idx::Int64)
 end
 
 
-"""
-An iterator over the set of satisfying assignments.
-Performs DFS to find all paths from the root node 
-to the (1) node.
-
-Note that any unassigned variables may take arbitrary values.
-Hence, an assignment with n unassigned variables actually 
-represents 2^n assignments.
-"""
-struct allsat
-    bddtable::ROBDDTable
-    idx::Int64
-end
-
-
-function iterate(it::allsat)
-    try 
-        return ()
-    catch 
-        return nothing
-end
+#"""
+#An iterator over the set of satisfying assignments.
+#Performs DFS to find all paths from the root node 
+#to the (1) node.
+#
+#Note that any unassigned variables may take arbitrary values.
+#Hence, an assignment with n unassigned variables actually 
+#represents 2^n assignments.
+#"""
+#struct AllSat
+#    bddtable::ROBDDTable
+#    idx::Int64
+#end
+#
+#allsat(bddtab::ROBDDTable, idx::Int64) = AllSat(bddtab,idx)
+#
+#
+#function iterate(it::AllSat)
+#    try 
+#        return ()
+#    catch 
+#        return nothing
+#end
 
 
 """
