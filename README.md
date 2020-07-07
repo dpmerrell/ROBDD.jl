@@ -18,16 +18,16 @@ The `build` algorithm mentioned in that document includes substitution operation
 
 Some basic requirements:
 
-* Build an ROBDD from a Boolean expression
-* Perform boolean operations on ROBDDs
-* Restrict ROBDD
-* Sample an arbitrary model from an ROBDD
-* Enumerate models of an ROBDD
+* &#10003; Build an ROBDD from a Boolean expression
+* &#10003; Perform boolean operations on ROBDDs
+* &#10003; Restrict ROBDD
+* &#10003; Sample an arbitrary model from an ROBDD
+* &#10003; Enumerate models of an ROBDD
 
 Desirable features:
 
 * A DSL for constructing Boolean expressions
-* Count models of an ROBDD
+* &#10003; Count models of an ROBDD
 * Variable reordering
 * Simplify an ROBDD w.r.t. a "domain of interest"
 * Existential quantification 
