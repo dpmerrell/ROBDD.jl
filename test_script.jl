@@ -22,7 +22,8 @@ println(my_bdd_table)
 # (1) true
 
 # Construct the Boolean expression you're modeling
-my_expr = :(x1 | (x2 & !x2) | x3)
+#my_expr = :(x1 | (x2 & !x2) | x3)
+my_expr = :(x1 | x2 | x3)
 
 # Build a ROBDD from the expression.
 # The `build_robdd` function returns an 
@@ -47,6 +48,26 @@ println("INDEX: ", idx)
 # (5) x3 0 1
 # (6) x1 5 1
 # INDEX: 6
+
+
+# We provide an interface for
+# (1) getting an arbitrary SAT solution and
+# (2) enumerating all SAT solutions
+#     (modulo the unassigned variables--these
+#      may take any value.)
+println("ANYSAT: ", anysat(my_bdd_table, idx))
+println("ALLSAT:")
+for sat in allsat(my_bdd_table, idx)
+    println("\t",sat)
+end
+
+# output:
+#
+# ANYSAT: Dict{Symbol,Bool}(:x2 => 0,:x3 => 1,:x1 => 0)
+# ALLSAT:
+# 	Dict{Symbol,Bool}(:x2 => 0,:x3 => 1,:x1 => 0)
+# 	Dict{Symbol,Bool}(:x2 => 1,:x1 => 0)
+# 	Dict{Symbol,Bool}(:x1 => 1)
 
 
 # We can "restrict" a ROBDD by assigning

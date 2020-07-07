@@ -7,7 +7,7 @@
 module ROBDD
 
 
-export ROBDDTable, build_robdd, apply, restrict, clean_table 
+export ROBDDTable, build_robdd, apply, restrict, satcount, anysat, allsat, clean_table
 
 # Some essential functionality for the ROBDDTable 
 # and its members.
@@ -306,51 +306,135 @@ function satcount(bddtab::ROBDDTable, idx::Int64;
 end
 
 
+####################################################
+# Helper functions for SAT iteration
+####################################################
+function state_to_assignment(bddtable::ROBDDTable, 
+                             state::Vector{Pair{Int64,Bool}})
+    assignment = [bddtable.order[var(bddtable,n)] => b for (n,b) in state]
+    assignment = Dict{Symbol,Bool}(assignment)
+    return assignment
+end
+
+
+function dfs_sat_first(bddtab::ROBDDTable, idx::Int64)
+    if idx == 0
+        error("unsat")
+    elseif idx == 1
+        result = Vector{Pair{Int64,Bool}}()
+    elseif lo(bddtab, idx) == 0
+        result = dfs_sat_first(bddtab, hi(bddtab,idx))
+        pushfirst!(result, idx => true)
+    else
+        result = dfs_sat_first(bddtab, lo(bddtab,idx))
+        pushfirst!(result, idx => false)
+    end
+    return result
+end
+
+
+function is_sat(bddtab::ROBDDTable, state)
+    (idx,b) = state[end]
+    if b & hi(bddtab, idx) == 1
+        return true
+    elseif !b & lo(bddtab, idx) == 1
+        return true
+    else
+        return false
+    end
+end
+
+
+function increment_ancestor(bddtab::ROBDDTable, state)
+    n = length(state)
+    for i = n:-1:1
+        (idx,b) = pop!(state)
+        if !b
+            push!(state, idx => true)
+            break
+        end
+    end
+    return state
+end
+
+
+function dfs_next_sat(bddtab::ROBDDTable, state)
+
+    while true
+        (idx,b) = state[end]
+        if !b & !in(lo(bddtab,idx), (0,1))
+            # lo child not terminal --> add lo child
+            push!(state, lo(bddtab,idx) => false)
+        elseif b & !in(hi(bddtab,idx), (0,1))
+            # hi child not terminal --> add hi child
+            push!(state, hi(bddtab,idx) => false)
+        else
+            # change self or nearest ancestor from false -> true
+            state = increment_ancestor(bddtab, state)
+        end
+
+        if length(state) == 0 
+            break
+        elseif is_sat(bddtab, state)
+            break
+        end
+    end
+    return state
+end
+
+
 """
 Return an arbitrary satisfying assignment for an ROBDD.
 The method is deterministic -- it will return the same value
 when called multiple times.
 """
 function anysat(bddtab::ROBDDTable, idx::Int64)
-    if idx == 0
-        error("unsat")
-    elseif idx == 1
-        return Dict{Symbol,Bool}()
-    elseif lo(bddtab, idx) == 0
-        assignments = anysat(bddtab, hi(bddtab,idx))
-        assignments[bddtab.order_lookup[idx]] = true
-        return assignments
-    else
-        assignments = anysat(bddtab, lo(bddtab,idx))
-        assignments[bddtab.order_lookup[idx]] = false
-        return assignments
+    assignments = dfs_sat_first(bddtab, idx)
+    assignments = [bddtab.order[var(bddtab,idx)] => b for (idx,b) in assignments]
+    return Dict{Symbol,Bool}(assignments)
+end
+
+
+##########################################
+# AllSat iterator
+##########################################
+
+"""
+An iterator over the set of satisfying assignments.
+Performs DFS to find all paths from the root node 
+to the (1) node.
+
+Note that any unassigned variables may take arbitrary values.
+Hence, an assignment with n unassigned variables actually 
+represents 2^n assignments.
+"""
+struct AllSat
+    bddtable::ROBDDTable
+    idx::Int64
+end
+
+allsat(bddtab::ROBDDTable, idx::Int64) = AllSat(bddtab,idx)
+
+
+function iterate(iter::AllSat)
+    try 
+        state = dfs_sat_first(iter.bddtable, iter.idx)
+        soln = state_to_assignment(iter.bddtable, state)
+        return (soln, state)
+    catch 
+        return nothing
     end
 end
 
 
-#"""
-#An iterator over the set of satisfying assignments.
-#Performs DFS to find all paths from the root node 
-#to the (1) node.
-#
-#Note that any unassigned variables may take arbitrary values.
-#Hence, an assignment with n unassigned variables actually 
-#represents 2^n assignments.
-#"""
-#struct AllSat
-#    bddtable::ROBDDTable
-#    idx::Int64
-#end
-#
-#allsat(bddtab::ROBDDTable, idx::Int64) = AllSat(bddtab,idx)
-#
-#
-#function iterate(it::AllSat)
-#    try 
-#        return ()
-#    catch 
-#        return nothing
-#end
+function iterate(iter::AllSat, state::Vector{Pair{Int64,Bool}})
+    state = dfs_next_sat(iter.bddtable, state)
+    if length(state) == 0
+        return nothing
+    else
+        return (state_to_assignment(iter.bddtable, state), state)
+    end
+end
 
 
 """
