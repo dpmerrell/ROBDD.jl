@@ -32,7 +32,7 @@ Desirable features:
 * Simplify an ROBDD w.r.t. a "domain of interest"
 * Existential quantification 
 
-# Installation
+## Installation
 
 Use `Pkg` to `add` `https://github.com/dpmerrell/ROBDD.jl`.
 
