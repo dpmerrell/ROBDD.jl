@@ -32,6 +32,16 @@ Desirable features:
 * Simplify an ROBDD w.r.t. a "domain of interest"
 * Existential quantification 
 
+# Installation
+
+Use `Pkg` to `add` `https://github.com/dpmerrell/ROBDD.jl`.
+
+For example:
+
+```julia
+julia> using Pkg
+julia> Pkg.add("https://github.com/dpmerrell/ROBDD.jl")
+```
 
 ## Example Usage
 
