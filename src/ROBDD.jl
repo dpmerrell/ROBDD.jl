@@ -13,6 +13,7 @@ export ROBDDTable, build_robdd, apply, restrict, satcount, anysat, allsat, clean
 # and its members.
 import Base: getindex, setindex!, show, iterate
 
+using LRUCache
 
 # The simple building block of our ROBDDs.
 struct BDDNode
@@ -123,7 +124,9 @@ hi(bddtab::ROBDDTable, idx::Int64) = bddtab[idx].hi
 Apply a unary operation `op` to a BDD
 """
 function apply(bddtab::ROBDDTable, op::Function, idx::Int64;
-               memo::Dict{Tuple{Function,Vararg{Int64}},Int64}=Dict{Tuple{Function,Vararg{Int64}},Int64}())
+               memo::AbstractDict{Tuple{Function,Vararg{Int64}},Int64}=LRU{Tuple{Function,Vararg{Int64}},Int64}(maxsize=1000000, by=sizeof)
+              # memo::Dict{Tuple{Function,Vararg{Int64}},Int64}=Dict{Tuple{Function,Vararg{Int64}},Int64}())
+              )
    
     function rec_app(u1)
         if haskey(memo, (op,u1))
@@ -150,7 +153,9 @@ end
 Apply a binary operation `op` to two BDDs 
 """
 function apply(bddtab::ROBDDTable, op::Function, idx1::Int64, idx2::Int64; 
-               memo::Dict{Tuple{Function,Vararg{Int64}},Int64}=Dict{Tuple{Function,Vararg{Int64}},Int64}())
+               memo::AbstractDict{Tuple{Function,Vararg{Int64}},Int64}=LRU{Tuple{Function,Vararg{Int64}},Int64}(maxsize=1000000, by=sizeof)
+              # memo::Dict{Tuple{Function,Vararg{Int64}},Int64}=Dict{Tuple{Function,Vararg{Int64}},Int64}()
+              )
 
 
     function rec_app(u1, u2)
@@ -201,7 +206,7 @@ Optional `memo` kwarg allows a persistent memoization cache
 to be used by multiple calls to `build_robdd`.
 """
 function build_robdd(bddtab::ROBDDTable, bool_expr::Union{Bool,Symbol,Expr};
-                     memo::Dict{Tuple{Function,Vararg{Int64}},Int64}=Dict{Tuple{Function,Vararg{Int64}},Int64}()
+                     memo::AbstractDict{Tuple{Function,Vararg{Int64}},Int64}=LRU{Tuple{Function,Vararg{Int64}},Int64}(maxsize=1000000, by=sizeof)
                     )
     
     function rec_build(my_expr)
@@ -248,7 +253,8 @@ Optional `memo` kwarg allows a persistent memoization cache
 to be used by multiple calls to `restrict`.
 """
 function restrict(bddtab::ROBDDTable, bdd_idx::Int64, assignments::Dict{Symbol,Bool};
-                  memo::Dict{Tuple{Int64,Int64,Bool},Int64}=Dict{Tuple{Int64,Int64,Bool},Int64}()
+                  memo::AbstractDict{Tuple{Function,Vararg{Int64}},Int64}=LRU{Tuple{Function,Vararg{Int64}},Int64}(maxsize=1000000, by=sizeof)
+                 # memo::Dict{Tuple{Int64,Int64,Bool},Int64}=Dict{Tuple{Int64,Int64,Bool},Int64}()
                   )
     
     function rec_res(u, j, b)
@@ -283,7 +289,9 @@ end
 Count the satisfying assignments of an ROBDD.
 """
 function satcount(bddtab::ROBDDTable, idx::Int64;
-                  memo::Dict{Int64,Int64}=Dict{Int64,Int64}())
+                  memo::AbstractDict{Tuple{Function,Vararg{Int64}},Int64}=LRU{Tuple{Function,Vararg{Int64}},Int64}(maxsize=1000000, by=sizeof)
+                  #memo::Dict{Int64,Int64}=Dict{Int64,Int64}())
+                  )
 
     function rec_count(u)
         if haskey(memo, u)

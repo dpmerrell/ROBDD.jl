@@ -2,3 +2,6 @@ name = "ROBDD"
 uuid = "ebc74b1a-095f-4b26-a973-469aa541d333"
 authors = ["David Merrell <dmerrell@cs.wisc.edu>"]
 version = "0.1.0"
+
+[deps]
+LRUCache = "8ac3fa9e-de4c-5943-b1dc-09c6b5f20637"
