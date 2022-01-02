@@ -17,9 +17,9 @@ using LRUCache
 
 # The simple building block of our ROBDDs.
 struct BDDNode
-    var::Int64
-    lo::Int64
-    hi::Int64
+    var::UInt32
+    lo::UInt32
+    hi::UInt32
 end
 
 
@@ -28,13 +28,13 @@ end
 # (2) maintains some hash tables for bookkeeping
 
 mutable struct NodeTable
-    d::Dict{Int64,BDDNode}
-    latest::Int64
+    d::Dict{UInt32,BDDNode}
+    latest::UInt32
 end
 
 
-function NodeTable(n::Int64)
-    d = Dict{Int64,BDDNode}()
+function NodeTable(n::UInt32)
+    d = Dict{UInt32,BDDNode}()
     d[0] = BDDNode(n+1,0,0)
     d[1] = BDDNode(n+1,1,1)
     return NodeTable(d,1)
@@ -42,16 +42,16 @@ end
 
 
 mutable struct LookupTable
-    d::Dict{BDDNode,Int64}
+    d::Dict{BDDNode,UInt32}
 end
 
 
-LookupTable() = LookupTable(Dict{BDDNode,Int64}())
+LookupTable() = LookupTable(Dict{BDDNode,UInt32}())
 
 
 mutable struct ROBDDTable
     order::Vector{Symbol}
-    order_lookup::Dict{Symbol,Int64}
+    order_lookup::Dict{Symbol,UInt32}
     T::NodeTable
     H::LookupTable
 end
@@ -87,7 +87,7 @@ function add!(T::NodeTable, node::BDDNode)
     return T.latest
 end
 
-getindex(T::NodeTable, idx::Int64) = T.d[idx]
+getindex(T::NodeTable, idx::UInt32) = T.d[idx]
 
 # Basic operations for the "inverse" lookup table
 member(H::LookupTable, node::BDDNode) = haskey(H.d, node)
@@ -95,7 +95,7 @@ getindex(H::LookupTable, node::BDDNode) = H.d[node]
 getindex(bddtab::ROBDDTable, node::BDDNode) = bddtab.H[node]
 
 
-function setindex!(H::LookupTable, idx::Int64, node::BDDNode)
+function setindex!(H::LookupTable, idx::UInt32, node::BDDNode)
     setindex!(H.d, idx, node)
 end
 
@@ -113,26 +113,26 @@ function get_or_add(bddtab::ROBDDTable, node::BDDNode)
 end
 
 
-getindex(bddtab::ROBDDTable, idx::Int64) = bddtab.T[idx]
-var(bddtab::ROBDDTable, idx::Int64) = bddtab[idx].var
-varname(bddtab::ROBDDTable, idx::Int64) = bddtab.order[bddtab[idx].var]
-lo(bddtab::ROBDDTable, idx::Int64) = bddtab[idx].lo
-hi(bddtab::ROBDDTable, idx::Int64) = bddtab[idx].hi
+getindex(bddtab::ROBDDTable, idx::UInt32) = bddtab.T[idx]
+var(bddtab::ROBDDTable, idx::UInt32) = bddtab[idx].var
+varname(bddtab::ROBDDTable, idx::UInt32) = bddtab.order[bddtab[idx].var]
+lo(bddtab::ROBDDTable, idx::UInt32) = bddtab[idx].lo
+hi(bddtab::ROBDDTable, idx::UInt32) = bddtab[idx].hi
 
 
 """
 Apply a unary operation `op` to a BDD
 """
-function apply(bddtab::ROBDDTable, op::Function, idx::Int64;
-               memo::AbstractDict{Tuple{Function,Vararg{Int64}},Int64}=LRU{Tuple{Function,Vararg{Int64}},Int64}(maxsize=1000000, by=sizeof)
-              # memo::Dict{Tuple{Function,Vararg{Int64}},Int64}=Dict{Tuple{Function,Vararg{Int64}},Int64}())
+function apply(bddtab::ROBDDTable, op::Function, idx::UInt32;
+               memo::AbstractDict{Tuple{Function,Vararg{UInt32}},UInt32}=LRU{Tuple{Function,Vararg{UInt32}},UInt32}(maxsize=1000000, by=sizeof)
+              # memo::Dict{Tuple{Function,Vararg{UInt32}},UInt32}=Dict{Tuple{Function,Vararg{UInt32}},UInt32}())
               )
    
     function rec_app(u1)
         if haskey(memo, (op,u1))
             return memo[(op,u1)]
         elseif in(u1, (0,1))
-            u = Int64(op(Bool(u1)))
+            u = UInt32(op(Bool(u1)))
         else
             u = get_or_add(bddtab, 
                            BDDNode(var(bddtab,u1), 
@@ -152,9 +152,9 @@ end
 """
 Apply a binary operation `op` to two BDDs 
 """
-function apply(bddtab::ROBDDTable, op::Function, idx1::Int64, idx2::Int64; 
-               memo::AbstractDict{Tuple{Function,Vararg{Int64}},Int64}=LRU{Tuple{Function,Vararg{Int64}},Int64}(maxsize=1000000, by=sizeof)
-              # memo::Dict{Tuple{Function,Vararg{Int64}},Int64}=Dict{Tuple{Function,Vararg{Int64}},Int64}()
+function apply(bddtab::ROBDDTable, op::Function, idx1::UInt32, idx2::UInt32; 
+               memo::AbstractDict{Tuple{Function,Vararg{UInt32}},UInt32}=LRU{Tuple{Function,Vararg{UInt32}},UInt32}(maxsize=1000000, by=sizeof)
+              # memo::Dict{Tuple{Function,Vararg{UInt32}},UInt32}=Dict{Tuple{Function,Vararg{UInt32}},UInt32}()
               )
 
 
@@ -167,7 +167,7 @@ function apply(bddtab::ROBDDTable, op::Function, idx1::Int64, idx2::Int64;
         elseif (op == &) & (0 in (u1, u2))
             u = 0
         elseif in(u1, (0,1)) & in(u2, (0,1))
-            u = Int64(op(Bool(u1), Bool(u2)))
+            u = UInt32(op(Bool(u1), Bool(u2)))
         elseif var(bddtab, u1) == var(bddtab, u2)
             u = get_or_add(bddtab, 
                            BDDNode(var(bddtab,u1), 
@@ -206,13 +206,13 @@ Optional `memo` kwarg allows a persistent memoization cache
 to be used by multiple calls to `build_robdd`.
 """
 function build_robdd(bddtab::ROBDDTable, bool_expr::Union{Bool,Symbol,Expr};
-                     memo::AbstractDict{Tuple{Function,Vararg{Int64}},Int64}=LRU{Tuple{Function,Vararg{Int64}},Int64}(maxsize=1000000, by=sizeof)
+                     memo::AbstractDict{Tuple{Function,Vararg{UInt32}},UInt32}=LRU{Tuple{Function,Vararg{UInt32}},UInt32}(maxsize=1000000, by=sizeof)
                     )
     
     function rec_build(my_expr)
         # Terminals
         if typeof(my_expr) == Bool
-            return Int64(my_expr)
+            return UInt32(my_expr)
         elseif typeof(my_expr) == Symbol
             u = get_or_add(bddtab, 
                            BDDNode(bddtab.order_lookup[my_expr],0,1)
@@ -222,7 +222,7 @@ function build_robdd(bddtab::ROBDDTable, bool_expr::Union{Bool,Symbol,Expr};
             u = -1
             op = eval(my_expr.args[1])
             sub_exprs = my_expr.args[2:end]
-            sub_bdds = Vector{Int64}(undef,length(sub_exprs))
+            sub_bdds = Vector{UInt32}(undef,length(sub_exprs))
             for (i,se) in enumerate(sub_exprs)
                 sub_bdds[i] = rec_build(se)
                 # Add some checks for lazy evaluation
@@ -252,9 +252,9 @@ a dictionary of variable assignments.
 Optional `memo` kwarg allows a persistent memoization cache 
 to be used by multiple calls to `restrict`.
 """
-function restrict(bddtab::ROBDDTable, bdd_idx::Int64, assignments::Dict{Symbol,Bool};
-                  memo::AbstractDict{Tuple{Function,Vararg{Int64}},Int64}=LRU{Tuple{Function,Vararg{Int64}},Int64}(maxsize=1000000, by=sizeof)
-                 # memo::Dict{Tuple{Int64,Int64,Bool},Int64}=Dict{Tuple{Int64,Int64,Bool},Int64}()
+function restrict(bddtab::ROBDDTable, bdd_idx::UInt32, assignments::Dict{Symbol,Bool};
+                  memo::AbstractDict{Tuple{Function,Vararg{UInt32}},UInt32}=LRU{Tuple{Function,Vararg{UInt32}},UInt32}(maxsize=1000000, by=sizeof)
+                 # memo::Dict{Tuple{UInt32,UInt32,Bool},UInt32}=Dict{Tuple{UInt32,UInt32,Bool},UInt32}()
                   )
     
     function rec_res(u, j, b)
@@ -288,9 +288,9 @@ end
 """
 Count the satisfying assignments of an ROBDD.
 """
-function satcount(bddtab::ROBDDTable, idx::Int64;
-                  memo::AbstractDict{Tuple{Function,Vararg{Int64}},Int64}=LRU{Tuple{Function,Vararg{Int64}},Int64}(maxsize=1000000, by=sizeof)
-                  #memo::Dict{Int64,Int64}=Dict{Int64,Int64}())
+function satcount(bddtab::ROBDDTable, idx::UInt32;
+                  memo::AbstractDict{Tuple{Function,Vararg{UInt32}},UInt32}=LRU{Tuple{Function,Vararg{UInt32}},UInt32}(maxsize=1000000, by=sizeof)
+                  #memo::Dict{UInt32,UInt32}=Dict{UInt32,UInt32}())
                   )
 
     function rec_count(u)
@@ -318,18 +318,18 @@ end
 # Helper functions for SAT iteration
 ####################################################
 function state_to_assignment(bddtable::ROBDDTable, 
-                             state::Vector{Pair{Int64,Bool}})
+                             state::Vector{Pair{UInt32,Bool}})
     assignment = [bddtable.order[var(bddtable,n)] => b for (n,b) in state]
     assignment = Dict{Symbol,Bool}(assignment)
     return assignment
 end
 
 
-function dfs_sat_first(bddtab::ROBDDTable, idx::Int64)
+function dfs_sat_first(bddtab::ROBDDTable, idx::UInt32)
     if idx == 0
         error("unsat")
     elseif idx == 1
-        result = Vector{Pair{Int64,Bool}}()
+        result = Vector{Pair{UInt32,Bool}}()
     elseif lo(bddtab, idx) == 0
         result = dfs_sat_first(bddtab, hi(bddtab,idx))
         pushfirst!(result, idx => true)
@@ -396,7 +396,7 @@ Return an arbitrary satisfying assignment for an ROBDD.
 The method is deterministic -- it will return the same value
 when called multiple times.
 """
-function anysat(bddtab::ROBDDTable, idx::Int64)
+function anysat(bddtab::ROBDDTable, idx::UInt32)
     assignments = dfs_sat_first(bddtab, idx)
     assignments = [bddtab.order[var(bddtab,idx)] => b for (idx,b) in assignments]
     return Dict{Symbol,Bool}(assignments)
@@ -418,10 +418,10 @@ represents 2^n assignments.
 """
 struct AllSat
     bddtable::ROBDDTable
-    idx::Int64
+    idx::UInt32
 end
 
-allsat(bddtab::ROBDDTable, idx::Int64) = AllSat(bddtab,idx)
+allsat(bddtab::ROBDDTable, idx::UInt32) = AllSat(bddtab,idx)
 
 
 function iterate(iter::AllSat)
@@ -435,7 +435,7 @@ function iterate(iter::AllSat)
 end
 
 
-function iterate(iter::AllSat, state::Vector{Pair{Int64,Bool}})
+function iterate(iter::AllSat, state::Vector{Pair{UInt32,Bool}})
     state = dfs_next_sat(iter.bddtable, state)
     if length(state) == 0
         return nothing
@@ -450,12 +450,12 @@ Create a new ROBDDTable encoding the same ROBDD
 as `bddtab[idx]`, but with all of the "unused" nodes
 removed.
 
-Returns a tuple: (new_table::ROBDDTable, new_idx::Int64)
+Returns a tuple: (new_table::ROBDDTable, new_idx::UInt32)
 """
-function clean_table(bddtab::ROBDDTable, idx::Int64)
+function clean_table(bddtab::ROBDDTable, idx::UInt32)
     
     new_table = ROBDDTable(bddtab.order)
-    old2new = Dict{Int64,Int64}(0=>0,1=>1)
+    old2new = Dict{UInt32,UInt32}(0=>0,1=>1)
 
     function rec_clean(old_u)
         if haskey(old2new, old_u)
