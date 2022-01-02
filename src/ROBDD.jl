@@ -59,7 +59,7 @@ end
 
 ROBDDTable(order::Vector{Symbol}) = ROBDDTable(order, 
                                                Dict(name=>idx for (idx,name) in enumerate(order)), 
-                                               NodeTable(length(order)), 
+                                               NodeTable(UInt32(length(order))), 
                                                LookupTable()
                                               )
 
@@ -68,11 +68,11 @@ ROBDDTable(order::Vector{Symbol}) = ROBDDTable(order,
 function show(io::IO, bddtab::ROBDDTable)
     out_str = string("(0) false\n(1) true")
     for i=2:bddtab.T.latest
-        v = varname(bddtab,i)
+        v = varname(bddtab,UInt32(i))
         out_str = string(out_str, "\n","(",i,") ", 
-                         varname(bddtab,i), " ", 
-                         lo(bddtab,i), " ",
-                         hi(bddtab,i))
+                         varname(bddtab,UInt32(i)), " ", 
+                         lo(bddtab,UInt32(i)), " ",
+                         hi(bddtab,UInt32(i)))
     end
     print(io, out_str)
 
@@ -124,7 +124,7 @@ hi(bddtab::ROBDDTable, idx::UInt32) = bddtab[idx].hi
 Apply a unary operation `op` to a BDD
 """
 function apply(bddtab::ROBDDTable, op::Function, idx::UInt32;
-               memo::AbstractDict{Tuple{Function,Vararg{UInt32}},UInt32}=LRU{Tuple{Function,Vararg{UInt32}},UInt32}(maxsize=1000000, by=sizeof)
+               memo::AbstractDict{Tuple{Function,Vararg{UInt32}},UInt32}=LRU{Tuple{Function,Vararg{UInt32}},UInt32}(maxsize=3000000, by=sizeof)
               # memo::Dict{Tuple{Function,Vararg{UInt32}},UInt32}=Dict{Tuple{Function,Vararg{UInt32}},UInt32}())
               )
    
@@ -153,7 +153,7 @@ end
 Apply a binary operation `op` to two BDDs 
 """
 function apply(bddtab::ROBDDTable, op::Function, idx1::UInt32, idx2::UInt32; 
-               memo::AbstractDict{Tuple{Function,Vararg{UInt32}},UInt32}=LRU{Tuple{Function,Vararg{UInt32}},UInt32}(maxsize=1000000, by=sizeof)
+               memo::AbstractDict{Tuple{Function,Vararg{UInt32}},UInt32}=LRU{Tuple{Function,Vararg{UInt32}},UInt32}(maxsize=3000000, by=sizeof)
               # memo::Dict{Tuple{Function,Vararg{UInt32}},UInt32}=Dict{Tuple{Function,Vararg{UInt32}},UInt32}()
               )
 
@@ -206,7 +206,7 @@ Optional `memo` kwarg allows a persistent memoization cache
 to be used by multiple calls to `build_robdd`.
 """
 function build_robdd(bddtab::ROBDDTable, bool_expr::Union{Bool,Symbol,Expr};
-                     memo::AbstractDict{Tuple{Function,Vararg{UInt32}},UInt32}=LRU{Tuple{Function,Vararg{UInt32}},UInt32}(maxsize=1000000, by=sizeof)
+                     memo::AbstractDict{Tuple{Function,Vararg{UInt32}},UInt32}=LRU{Tuple{Function,Vararg{UInt32}},UInt32}(maxsize=3000000, by=sizeof)
                     )
     
     function rec_build(my_expr)
@@ -253,8 +253,7 @@ Optional `memo` kwarg allows a persistent memoization cache
 to be used by multiple calls to `restrict`.
 """
 function restrict(bddtab::ROBDDTable, bdd_idx::UInt32, assignments::Dict{Symbol,Bool};
-                  memo::AbstractDict{Tuple{Function,Vararg{UInt32}},UInt32}=LRU{Tuple{Function,Vararg{UInt32}},UInt32}(maxsize=1000000, by=sizeof)
-                 # memo::Dict{Tuple{UInt32,UInt32,Bool},UInt32}=Dict{Tuple{UInt32,UInt32,Bool},UInt32}()
+                  memo::AbstractDict{Tuple{UInt32,UInt32,Bool},UInt32}=LRU{Tuple{UInt32,UInt32,Bool},UInt32}(maxsize=3000000, by=sizeof)
                   )
     
     function rec_res(u, j, b)
@@ -289,7 +288,7 @@ end
 Count the satisfying assignments of an ROBDD.
 """
 function satcount(bddtab::ROBDDTable, idx::UInt32;
-                  memo::AbstractDict{Tuple{Function,Vararg{UInt32}},UInt32}=LRU{Tuple{Function,Vararg{UInt32}},UInt32}(maxsize=1000000, by=sizeof)
+                  memo::AbstractDict{UInt32,UInt32}=LRU{UInt32,UInt32}(maxsize=3000000, by=sizeof)
                   #memo::Dict{UInt32,UInt32}=Dict{UInt32,UInt32}())
                   )
 
@@ -305,7 +304,7 @@ function satcount(bddtab::ROBDDTable, idx::UInt32;
             h = hi(bddtab,u)
             lcount = rec_count(l)
             hcount = rec_count(h)
-            res = lcount * 2^(var(bddtab,l) - var(bddtab,u) - 1) + hcount * 2^(var(bddtab,r) - var(bddtab,u) - 1)
+            res = lcount * 2^(Int(var(bddtab,l)) - Int(var(bddtab,u)) - 1) + hcount * 2^(Int(var(bddtab,r)) - Int(var(bddtab,u)) - 1)
         end
         return res
     end
